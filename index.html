@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>KvK 差し込みタイマー</title>
+
+<style>
+
+body{
+    background:#111;
+    color:white;
+    font-family:sans-serif;
+    text-align:center;
+    padding:20px;
+}
+
+h1{
+    margin-bottom:10px;
+}
+
+#utcClock{
+    font-size:38px;
+    color:#00ffcc;
+    margin-bottom:25px;
+}
+
+.input-group{
+    margin:15px 0;
+}
+
+input{
+    font-size:22px;
+    padding:10px;
+    width:180px;
+    text-align:center;
+    border-radius:8px;
+    border:none;
+}
+
+button{
+    font-size:24px;
+    padding:12px 28px;
+    border:none;
+    border-radius:10px;
+    cursor:pointer;
+    margin-top:20px;
+}
+
+#goUtc{
+    margin-top:30px;
+    font-size:28px;
+    color:#ffd700;
+}
+
+#countdown{
+    margin-top:20px;
+    font-size:90px;
+    font-weight:bold;
+}
+
+.yellow{
+    color:#ffcc00;
+}
+
+.red{
+    color:#ff4444;
+}
+
+.green{
+    color:#00ff66;
+}
+
+.small{
+    font-size:22px;
+    margin-top:10px;
+    opacity:0.8;
+}
+
+/* タブ */
+
+.tabs{
+    display:flex;
+    gap:10px;
+    margin-bottom:25px;
+}
+
+.tab-btn{
+    flex:1;
+    background:#333;
+    color:white;
+}
+
+.active-tab{
+    background:#2563eb;
+}
+
+.tab-content{
+    display:none;
+}
+
+.active-content{
+    display:block;
+}
+
+/* 練習 */
+
+#trainingText{
+    font-size:90px;
+    font-weight:bold;
+    margin-top:30px;
+}
+
+#trainingResult{
+    font-size:34px;
+    margin-top:25px;
+}
+
+.good{
+    color:#00ff66;
+}
+
+.mid{
+    color:#ffcc00;
+}
+
+.bad{
+    color:#ff4444;
+}
+
+.stats{
+    margin-top:30px;
+    font-size:24px;
+    line-height:1.8;
+}
+
+</style>
+</head>
+
+<body>
+
+<h1>KvK 差し込みタイマー</h1>
+
+<div class="tabs">
+
+<button
+class="tab-btn active-tab"
+id="timerTabBtn"
+onclick="switchTab('timer')">
+
+差し込みタイマー
+
+</button>
+
+<button
+class="tab-btn"
+id="trainingTabBtn"
+onclick="switchTab('training')">
+
+練習モード
+
+</button>
+
+</div>
+
+<!-- 差し込みタイマー -->
+
+<div id="timerTab"
+class="tab-content active-content">
+
+<div id="utcClock">--:--:--.---</div>
+
+<div class="input-group">
+    <div>集結残り時間</div>
+
+    <input id="remainMin"
+    type="number"
+    value="3"
+    min="0"> 分
+
+    <input id="remainSec"
+    type="number"
+    value="0"
+    min="0"
+    max="59"> 秒
+</div>
+
+<div class="input-group">
+    <div>敵行軍時間（秒）</div>
+
+    <input id="enemyMarch"
+    type="number"
+    step="0.1"
+    value="45.0">
+</div>
+
+<div class="input-group">
+    <div>自分行軍時間（秒）</div>
+
+    <input id="myMarch"
+    type="number"
+    step="0.1"
+    value="12.0">
+</div>
+
+<div class="input-group">
+    <div>ラグ補正（ms）</div>
+
+    <input id="offset"
+    type="number"
+    value="0">
+</div>
+
+<button onclick="startTimer()">
+集結確認
+</button>
+
+<div id="goUtc"></div>
+
+<div class="small"
+id="arrivalUtc"></div>
+
+<div id="countdown">
+--
+</div>
+
+</div>
+
+<!-- 練習モード -->
+
+<div id="trainingTab"
+class="tab-content">
+
+<div class="input-group">
+
+<div>理想差し込み秒数</div>
+
+<input
+id="idealTiming"
+type="number"
+step="0.1"
+value="0.3">
+
+</div>
+
+<button onclick="startTraining()">
+START
+</button>
+
+<div id="trainingText">
+READY
+</div>
+
+<button onclick="tapTraining()">
+TAP
+</button>
+
+<div id="trainingResult">
+待機中
+</div>
+
+<div class="stats">
+
+<div>
+平均:
+<span id="avgText">
+0.000 秒
+</span>
+</div>
+
+<div>
+BEST:
+<span id="bestText">
+0.000 秒
+</span>
+</div>
+
+<div>
+回数:
+<span id="countText">
+0
+</span>
+</div>
+
+</div>
+
+</div>
+
+<script>
+
+// ===== タブ =====
+
+function switchTab(tab){
+
+    document.getElementById("timerTab")
+        .classList.remove("active-content");
+
+    document.getElementById("trainingTab")
+        .classList.remove("active-content");
+
+    document.getElementById("timerTabBtn")
+        .classList.remove("active-tab");
+
+    document.getElementById("trainingTabBtn")
+        .classList.remove("active-tab");
+
+    if(tab === "timer"){
+
+        document.getElementById("timerTab")
+            .classList.add("active-content");
+
+        document.getElementById("timerTabBtn")
+            .classList.add("active-tab");
+
+    }else{
+
+        document.getElementById("trainingTab")
+            .classList.add("active-content");
+
+        document.getElementById("trainingTabBtn")
+            .classList.add("active-tab");
+    }
+}
+
+// ===== 高精度UTC =====
+
+const baseUtc = Date.now();
+
+const basePerf = performance.now();
+
+function accurateNow(){
+
+    return baseUtc +
+        (performance.now() - basePerf);
+}
+
+function updateUTCClock(){
+
+    const now =
+        new Date(accurateNow());
+
+    const text =
+        String(now.getUTCHours()).padStart(2,"0") + ":" +
+        String(now.getUTCMinutes()).padStart(2,"0") + ":" +
+        String(now.getUTCSeconds()).padStart(2,"0") + "." +
+        String(now.getUTCMilliseconds()).padStart(3,"0");
+
+    document.getElementById("utcClock")
+        .textContent =
+        "UTC " + text;
+
+    requestAnimationFrame(updateUTCClock);
+}
+
+updateUTCClock();
+
+// ===== 差し込みタイマー =====
+
+let goTime = 0;
+
+function startTimer(){
+
+    const remainMin =
+        parseFloat(
+            document.getElementById("remainMin").value
+        ) || 0;
+
+    const remainSec =
+        parseFloat(
+            document.getElementById("remainSec").value
+        ) || 0;
+
+    const enemyMarch =
+        parseFloat(
+            document.getElementById("enemyMarch").value
+        ) || 0;
+
+    const myMarch =
+        parseFloat(
+            document.getElementById("myMarch").value
+        ) || 0;
+
+    const offset =
+        parseFloat(
+            document.getElementById("offset").value
+        ) || 0;
+
+    const remainTotal =
+        (remainMin * 60) + remainSec;
+
+    const now =
+        accurateNow();
+
+    const enemyArrival =
+        now +
+        (remainTotal * 1000) +
+        (enemyMarch * 1000);
+
+    goTime =
+        enemyArrival -
+        (myMarch * 1000) +
+        offset;
+
+    const arrivalDate =
+        new Date(enemyArrival);
+
+    const goDate =
+        new Date(goTime);
+
+    document.getElementById("arrivalUtc")
+        .textContent =
+        "敵着弾UTC : " +
+        formatUTC(arrivalDate);
+
+    document.getElementById("goUtc")
+        .textContent =
+        "GO UTC : " +
+        formatUTC(goDate);
+}
+
+function formatUTC(date){
+
+    return (
+        String(date.getUTCHours()).padStart(2,"0") + ":" +
+        String(date.getUTCMinutes()).padStart(2,"0") + ":" +
+        String(date.getUTCSeconds()).padStart(2,"0") + "." +
+        String(date.getUTCMilliseconds()).padStart(3,"0")
+    );
+}
+
+function updateCountdown(){
+
+    const countdown =
+        document.getElementById("countdown");
+
+    if(goTime === 0){
+
+        requestAnimationFrame(updateCountdown);
+        return;
+    }
+
+    const remain =
+        (goTime - accurateNow()) / 1000;
+
+    if(remain <= 0){
+
+        countdown.textContent = "GO!";
+
+        countdown.className = "green";
+
+    }else{
+
+        countdown.textContent =
+            remain.toFixed(1);
+
+        if(remain <= 1){
+
+            countdown.className = "red";
+
+        }else if(remain <= 3){
+
+            countdown.className = "yellow";
+
+        }else{
+
+            countdown.className = "";
+        }
+    }
+
+    requestAnimationFrame(updateCountdown);
+}
+
+updateCountdown();
+
+// ===== 練習モード =====
+
+let trainingStarted = false;
+
+let trainingTarget = 0;
+
+let trainingResults = [];
+
+let trainingBest = null;
+
+let trainingInterval = null;
+
+function startTraining(){
+
+    trainingStarted = false;
+
+    clearInterval(trainingInterval);
+
+    document.getElementById("trainingResult")
+        .innerHTML = "待機中";
+
+    let remain = 5.0;
+
+    const ideal =
+        parseFloat(
+            document.getElementById("idealTiming").value
+        );
+
+    document.getElementById("trainingText")
+        .innerText =
+        remain.toFixed(1);
+
+    trainingInterval = setInterval(() => {
+
+        remain -= 0.1;
+
+        document.getElementById("trainingText")
+            .innerText =
+            remain.toFixed(1);
+
+        if(remain <= 0){
+
+            clearInterval(trainingInterval);
+
+            document.getElementById("trainingText")
+                .innerText = "MISS";
+
+            trainingStarted = false;
+        }
+
+    },100);
+
+    trainingTarget =
+        performance.now() +
+        ((5.0 - ideal) * 1000);
+
+    trainingStarted = true;
+}
+
+function tapTraining(){
+
+    if(!trainingStarted){
+
+        document.getElementById("trainingResult")
+            .innerHTML =
+            `<span class="bad">
+                タイミング外
+            </span>`;
+
+        return;
+    }
+
+    const now =
+        performance.now();
+
+    const diff =
+        (now - trainingTarget) / 1000;
+
+    const abs =
+        Math.abs(diff);
+
+    let rank = "";
+
+    let className = "";
+
+    if(abs <= 0.05){
+
+        rank = "PERFECT";
+
+        className = "good";
+
+    }else if(abs <= 0.10){
+
+        rank = "GOOD";
+
+        className = "mid";
+
+    }else{
+
+        rank = "MISS";
+
+        className = "bad";
+    }
+
+    document.getElementById("trainingResult")
+        .innerHTML = `
+        <span class="${className}">
+            ${rank}<br>
+            ${diff >= 0 ? "+" : ""}
+            ${diff.toFixed(3)} 秒
+        </span>
+    `;
+
+    trainingResults.push(abs);
+
+    if(trainingBest === null ||
+       abs < trainingBest){
+
+        trainingBest = abs;
+    }
+
+    updateTrainingStats();
+
+    trainingStarted = false;
+
+    clearInterval(trainingInterval);
+
+    setTimeout(() => {
+
+        document.getElementById("trainingText")
+            .innerText = "READY";
+
+    },800);
+}
+
+function updateTrainingStats(){
+
+    let total = 0;
+
+    for(let r of trainingResults){
+
+        total += r;
+    }
+
+    const avg =
+        total / trainingResults.length;
+
+    document.getElementById("avgText")
+        .innerText =
+        avg.toFixed(3) + " 秒";
+
+    document.getElementById("bestText")
+        .innerText =
+        trainingBest.toFixed(3) + " 秒";
+
+    document.getElementById("countText")
+        .innerText =
+        trainingResults.length;
+}
+
+</script>
+
+</body>
+</html>
